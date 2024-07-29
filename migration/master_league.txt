@@ -1,0 +1,9 @@
+CREATE TABLE master_league (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    sport_id VARCHAR(255) NOT NULL,
+    sport_name VARCHAR(255) NOT NULL,
+    sport_main_markets JSONB,
+    region VARCHAR(255) NOT NULL,
+    region_code VARCHAR(50) NOT NULL
+);

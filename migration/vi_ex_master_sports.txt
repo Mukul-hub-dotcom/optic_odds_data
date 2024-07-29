@@ -1,0 +1,20 @@
+CREATE TABLE vi_ex_master_sports (
+  sports_id SERIAL PRIMARY KEY,
+  sport_guid INT DEFAULT NULL,
+  bet365_sport_guid INT DEFAULT 0,
+  lsport_guid INT NOT NULL,
+  sports_name VARCHAR(100) NOT NULL,
+  updated_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  "order" INT NOT NULL DEFAULT 0,
+  provider_name VARCHAR(55) DEFAULT NULL,
+  sportbook_betting BOOLEAN NOT NULL DEFAULT TRUE,
+  exchange_betting BOOLEAN NOT NULL DEFAULT TRUE,
+  casino_betting BOOLEAN NOT NULL DEFAULT TRUE,
+  fancy_betting BOOLEAN NOT NULL DEFAULT FALSE,
+  min_odd_limit FLOAT NOT NULL DEFAULT 0,
+  max_odd_limit FLOAT NOT NULL DEFAULT 0,
+  agent_min_odd_limit FLOAT NOT NULL DEFAULT 0,
+  agent_max_odd_limit FLOAT NOT NULL DEFAULT 0,
+  icon VARCHAR(50) DEFAULT NULL
+);
