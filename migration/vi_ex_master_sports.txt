@@ -5,7 +5,7 @@ CREATE TABLE vi_ex_master_sports (
   lsport_guid INT NOT NULL,
   sports_name VARCHAR(100) NOT NULL,
   updated_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  active BOOLEAN NOT NULL DEFAULT TRUE,
+  active BOOLEAN NOT NULL DEFAULT FALSE,
   "order" INT NOT NULL DEFAULT 0,
   provider_name VARCHAR(55) DEFAULT NULL,
   sportbook_betting BOOLEAN NOT NULL DEFAULT TRUE,
