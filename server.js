@@ -5,11 +5,13 @@ const sportsRouter = require("./routes/sports");
 const leagueMasterRouter = require("./routes/leagueMaster");
 const leagueRouter = require("./routes/leagues");
 const sportsEventRouter = require("./routes/vi_lsports_events");
+const marketOddsRouter = require("./routes/vi_lsports_market_odds");
 
 app.use("/sports-name", sportsRouter);
 app.use("/master-league", leagueMasterRouter);
 app.use("/vi-league", leagueRouter);
 app.use("/vi-lsports-events", sportsEventRouter);
+app.use("/vi-lsports-market-odds", marketOddsRouter);
 
 const server = app.listen(3000, () => {
   console.log("Server is running on port 3000");
