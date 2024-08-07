@@ -1,6 +1,6 @@
 CREATE TABLE vi_ls_leagues (
   league_id SERIAL PRIMARY KEY,
-  league_uid INT DEFAULT NULL,
+  league_uid VARCHAR(100) UNIQUE,
   location_id INT NOT NULL,
   sport_guid INT NOT NULL,
   league_abbr VARCHAR(100) NOT NULL,

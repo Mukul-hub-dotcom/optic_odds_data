@@ -2,10 +2,13 @@ const express = require("express");
 const db = require("../db");
 const axios = require("axios");
 const router = express.Router();
+require('dotenv').config()
+
+const key=process.env.OPTIC_ODDS_KEY
 
 router.post("/", async (req, res) => {
   const url =
-    "https://api.opticodds.com/api/v3/sports?key=2f5a62c8-3bad-4c04-8ffa-78e786909f9a";
+    `https://api.opticodds.com/api/v3/sports?key=${key}`;
 
   try {
     const response = await axios.get(url);

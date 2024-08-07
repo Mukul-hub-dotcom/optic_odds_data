@@ -2,9 +2,11 @@ const express = require("express");
 const axios = require("axios");
 const db = require("../db");
 const router = express.Router();
+require("dotenv").config();
+
+const key = process.env.OPTIC_ODDS_KEY;
 
 router.post("/", async (req, res) => {
-  const apiKey = "2f5a62c8-3bad-4c04-8ffa-78e786909f9a";
   const sportData = await db.query(
     "SELECT sports_name FROM vi_ex_master_sports WHERE active=true"
   );
@@ -14,7 +16,7 @@ router.post("/", async (req, res) => {
     let fixtureTotalPage = [];
 
     for (const sport of sports) {
-      const url = `https://api.opticodds.com/api/v3/fixtures?sport=${sport.sports_name.toLowerCase()}&key=${apiKey}`;
+      const url = `https://api.opticodds.com/api/v3/fixtures?sport=${sport.sports_name.toLowerCase()}&key=${key}`;
       const response = await axios.get(url);
       const fixturesPages = response.data.total_pages;
       fixtureTotalPage.push(fixturesPages);
@@ -22,18 +24,16 @@ router.post("/", async (req, res) => {
     console.log(fixtureTotalPage);
 
     for (let i = 0; i < fixtureTotalPage.length; i++) {
-      let count = 0;
       let pages = fixtureTotalPage[i];
       for (let j = 1; j <= pages; j++) {
         const url = `https://api.opticodds.com/api/v3/fixtures?sport=${sports[
           i
-        ].sports_name.toLowerCase()}&key=${apiKey}&page=${j}`;
+        ].sports_name.toLowerCase()}&key=${key}&page=${j}`;
         const response = await axios.get(url);
         const fixturesData = response.data.data;
         fixtureLoop.push(...fixturesData);
       }
     }
-    console.log(fixtureLoop.length);
 
     for (const fixture of fixtureLoop) {
       const {
@@ -48,12 +48,10 @@ router.post("/", async (req, res) => {
       } = fixture;
 
       try {
-        // Fetch league_uid
         const leagueQuery = "SELECT id FROM master_league WHERE name = $1";
         const leagueResult = await db.query(leagueQuery, [league_name]);
         const league_uid = leagueResult.rows[0]?.id;
 
-        // Fetch sport_guid
         const sportQuery =
           "SELECT sports_id FROM vi_ex_master_sports WHERE sports_name = $1";
         const sportResult = await db.query(sportQuery, [sport_name]);
@@ -68,10 +66,9 @@ router.post("/", async (req, res) => {
         } else if (fixtureDate > currentDate) {
           time_status = 0;
         } else {
-          time_status = 3; // Past
+          time_status = 3;
         }
 
-        // Insert fixture into vi_lsport_events
         const insertQuery = `
           INSERT INTO vi_lsport_events (
             event_id, sport_guid, unique_id, time_status, r_id, league_uid, open_date, updated_at, ss,
@@ -79,10 +76,21 @@ router.post("/", async (req, res) => {
             is_live, total_cap, agent_total_cap, is_auto_settle, chanel_id, cta_background_color,
             cta_font_color, background_image, "order", is_notify, rz_match_id, is_widget
           ) VALUES (
-            $1, $2, DEFAULT,$3, DEFAULT, $4, $5, CURRENT_TIMESTAMP, DEFAULT,
+            $1, $2, DEFAULT, $3, DEFAULT, $4, $5, CURRENT_TIMESTAMP, DEFAULT,
             $6, $7, $8::jsonb, $9::jsonb, $10, TRUE, TRUE, $11, DEFAULT, DEFAULT, TRUE,
-            DEFAULT, DEFAULT, DEFAULT, DEFAULT,DEFAULT, DEFAULT, DEFAULT,DEFAULT
-          )
+            DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT
+          ) ON CONFLICT (event_id) DO UPDATE SET
+            sport_guid = EXCLUDED.sport_guid,
+            time_status = EXCLUDED.time_status,
+            league_uid = EXCLUDED.league_uid,
+            open_date = EXCLUDED.open_date,
+            updated_at = CURRENT_TIMESTAMP,
+            team_1 = EXCLUDED.team_1,
+            team_2 = EXCLUDED.team_2,
+            league_json = EXCLUDED.league_json,
+            participants = EXCLUDED.participants,
+            participant_name = EXCLUDED.participant_name,
+            is_live = EXCLUDED.is_live
         `;
 
         const values = [
@@ -106,17 +114,65 @@ router.post("/", async (req, res) => {
         ];
 
         await db.query(insertQuery, values);
+        await fetchAndInsertOdds(fixture.id);
       } catch (err) {
         console.error(`Error inserting fixture ${fixture.id}:`, err);
-        // Optionally handle specific fixture errors here
       }
     }
 
-    res.status(200).send("Fixtures data inserted successfully");
+    res.status(200).send("Fixtures data inserted/updated successfully");
   } catch (err) {
     console.error("Error fetching or processing data:", err);
     res.status(500).send("Server Error");
   }
 });
+
+async function fetchAndInsertOdds(fixtureId) {
+  const url = `https://api.opticodds.com/api/v3/fixtures/odds?sportsbook=1XBet&key=${key}&fixture_id=${fixtureId}`;
+
+  try {
+    const response = await axios.get(url);
+    if (response.data.data.length == 0) {
+      console.log("No odds data for fixture", fixtureId);
+      return;
+    }
+    const event_id = response.data.data[0].id;
+    const oddData = response.data.data[0].odds;
+    if (oddData.length == 0) {
+      console.log("No odds available for event", event_id);
+      return;
+    }
+
+    const insertQuery = `
+      INSERT INTO vi_lsport_market_odds (
+        event_id, market_id, market_name, market_key, id, name
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (id) DO UPDATE SET
+        market_name = EXCLUDED.market_name,
+        market_key = EXCLUDED.market_key,
+        name = EXCLUDED.name
+    `;
+
+    for (const odd of oddData) {
+      await db.query(insertQuery, [
+        event_id,
+        odd.market_id,
+        odd.market,
+        odd.market,
+        odd.id,
+        odd.name,
+      ]);
+    }
+
+    console.log(
+      "Data successfully inserted/updated into vi_lsport_market_odds table"
+    );
+  } catch (error) {
+    console.error(
+      "Error inserting/updating data into vi_lsport_market_odds table:",
+      error
+    );
+  }
+}
 
 module.exports = router;

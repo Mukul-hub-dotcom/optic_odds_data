@@ -1,7 +1,7 @@
 CREATE SEQUENCE unique_id_seq;
 CREATE TABLE vi_lsport_events (
     id SERIAL PRIMARY KEY,
-    event_id VARCHAR(50) NOT NULL,
+    event_id VARCHAR(50) NOT NULL UNIQUE,
     sport_guid INT NOT NULL,
     unique_id INT DEFAULT nextval('unique_id_seq'),
     time_status INT NOT NULL,

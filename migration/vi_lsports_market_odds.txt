@@ -5,7 +5,7 @@ CREATE TABLE vi_lsport_market_odds (
     market_name VARCHAR(255),
     market_key VARCHAR(255),
     line NUMERIC DEFAULT 0.00,
-    id VARCHAR(255) ,
+    id VARCHAR(255) UNIQUE,
     provider_id INTEGER DEFAULT 1,
     status INTEGER DEFAULT 0,
     name VARCHAR(255),
