@@ -15,16 +15,16 @@ router.post("/", async (req, res) => {
 
     const insertQuery = `
       INSERT INTO master_league (league_id, name, sport, region, region_code)
-      VALUES ($1, $2, $3, $4, $5)
-      ON CONFLICT (league_id) 
-      DO UPDATE SET name = EXCLUDED.name, sport = EXCLUDED.sport, region = EXCLUDED.region, region_code = EXCLUDED.region_code,updated_at = NOW()
+      VALUES (?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE 
+      name = VALUES(name), sport = VALUES(sport), region = VALUES(region), region_code = VALUES(region_code), updated_at = CURRENT_TIMESTAMP
     `;
 
     for (const league of leagueData) {
       await db.query(insertQuery, [
         league.id,
         league.name,
-        league.sport,
+        JSON.stringify(league.sport), 
         league.region,
         league.region_code,
       ]);
@@ -33,52 +33,46 @@ router.post("/", async (req, res) => {
     res.status(200).send("Data successfully inserted into master_league table");
   } catch (error) {
     console.error("Error inserting data into master_league table:", error);
-    res
-      .status(500)
-      .send("An error occurred while inserting data into the table");
+    res.status(500).send("An error occurred while inserting data into the table");
   }
 });
 
 async function generateLeague() {
   try {
-    const response = await db.query("SELECT * FROM master_league");
-    const leagueData = response.rows;
+    const [leagueResponse] = await db.query("SELECT * FROM master_league");
+    const leagueData = leagueResponse;
 
-    const sportResponse = await db.query(
-      "SELECT sports_id, sports_name FROM vi_ex_master_sports"
-    );
-    const sportMappings = sportResponse.rows.reduce((map, row) => {
-      map[row.sports_name] = row.sports_id;
-      return map;
-    }, {});
 
     const insertQuery = `
       INSERT INTO vi_ls_leagues (
         league_uid, location_id, sport_guid, league_abbr, league_name, region, 
         active, agent_active, updated_date, is_deleted, is_agent_deleted
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      ON CONFLICT (league_uid)
-      DO UPDATE SET location_id = EXCLUDED.location_id, sport_guid = EXCLUDED.sport_guid, league_abbr = EXCLUDED.league_abbr, league_name = EXCLUDED.league_name, region = EXCLUDED.region, 
-                    active = EXCLUDED.active, agent_active = EXCLUDED.agent_active, updated_date = EXCLUDED.updated_date, is_deleted = EXCLUDED.is_deleted, is_agent_deleted = EXCLUDED.is_agent_deleted
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE 
+      location_id = VALUES(location_id), sport_guid = VALUES(sport_guid), league_abbr = VALUES(league_abbr), league_name = VALUES(league_name), region = VALUES(region), 
+      active = VALUES(active), agent_active = VALUES(agent_active), updated_date = VALUES(updated_date), is_deleted = VALUES(is_deleted), is_agent_deleted = VALUES(is_agent_deleted)
     `;
 
     for (const league of leagueData) {
       const league_abbr = league.league_id.split("_")[0];
-
-      const sport_guid = sportMappings[league.sport.name] || null;
+       const sportName = JSON.parse(league.sport).name
+       const query = 'SELECT sports_id FROM vi_ex_master_sports WHERE sports_name = ?';
+       const [rows] = await db.query(query, [sportName]);
+       
+      const sport_guid = rows[0].sports_id;
 
       await db.query(insertQuery, [
         league.league_id,
-        0001,
+        1, 
         sport_guid,
         league_abbr,
         league.name,
         league.region,
-        false,
-        true,
+        0, 
+        1, 
         new Date(),
-        false,
-        false,
+        0, 
+        0, 
       ]);
     }
     console.log("Data successfully inserted into vi_ls_leagues table");

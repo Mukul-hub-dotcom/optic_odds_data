@@ -1,32 +1,43 @@
-CREATE SEQUENCE unique_id_seq;
 CREATE TABLE vi_lsport_events (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     event_id VARCHAR(50) NOT NULL UNIQUE,
     sport_guid INT NOT NULL,
-    unique_id INT DEFAULT nextval('unique_id_seq'),
+    unique_id INT DEFAULT NULL,
     time_status INT NOT NULL,
     r_id INT DEFAULT NULL,
     league_uid INT NOT NULL,
     open_date TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     ss INT DEFAULT NULL,
     team_1 VARCHAR(50) NOT NULL,
     team_2 VARCHAR(50) NOT NULL,
-    league_json JSONB NOT NULL,
-    participants JSONB NOT NULL,
+    league_json JSON NOT NULL,
+    participants JSON NOT NULL,
     participant_name VARCHAR(255) NOT NULL,
-    admin_status BOOLEAN NOT NULL DEFAULT true,
-    agent_status BOOLEAN NOT NULL DEFAULT true,
-    is_live BOOLEAN NOT NULL DEFAULT FALSE,
+    admin_status TINYINT(1) NOT NULL DEFAULT 1,
+    agent_status TINYINT(1) NOT NULL DEFAULT 1,
+    is_live TINYINT(1) NOT NULL DEFAULT 0,
     total_cap INT DEFAULT NULL,
-    agent_total_cap INT,
-    is_auto_settle BOOLEAN NOT NULL DEFAULT TRUE,
+    agent_total_cap INT DEFAULT NULL,
+    is_auto_settle TINYINT(1) NOT NULL DEFAULT 1,
     chanel_id INT DEFAULT NULL,
     cta_background_color VARCHAR(50) DEFAULT NULL,
     cta_font_color VARCHAR(50) DEFAULT NULL,
     background_image TEXT DEFAULT NULL,
-    "order" INT NOT NULL DEFAULT 0,
-    is_notify BOOLEAN NOT NULL DEFAULT FALSE,
+    `order` INT NOT NULL DEFAULT 0,
+    is_notify TINYINT(1) NOT NULL DEFAULT 0,
     rz_match_id INT DEFAULT NULL,
-    is_widget BOOLEAN NOT NULL DEFAULT TRUE
+    is_widget TINYINT(1) NOT NULL DEFAULT 1
 );
+
+-- Trigger to set unique_id based on last inserted id
+DELIMITER //
+CREATE TRIGGER before_insert_vi_lsport_events
+BEFORE INSERT ON vi_lsport_events
+FOR EACH ROW
+BEGIN
+  IF NEW.unique_id IS NULL THEN
+    SET NEW.unique_id = (SELECT IFNULL(MAX(unique_id), 0) + 1 FROM vi_lsport_events);
+  END IF;
+END//
+DELIMITER ;

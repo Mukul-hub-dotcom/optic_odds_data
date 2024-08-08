@@ -10,7 +10,8 @@ router.post("/", async (req, res) => {
   const sportData = await db.query(
     "SELECT sports_name FROM vi_ex_master_sports WHERE active=true"
   );
-  const sports = sportData.rows;
+  const sports = sportData[0];
+  
   try {
     let fixtureLoop = [];
     let fixtureTotalPage = [];
@@ -48,14 +49,14 @@ router.post("/", async (req, res) => {
       } = fixture;
 
       try {
-        const leagueQuery = "SELECT id FROM master_league WHERE name = $1";
+        const leagueQuery = "SELECT id FROM master_league WHERE name = ?";
         const leagueResult = await db.query(leagueQuery, [league_name]);
-        const league_uid = leagueResult.rows[0]?.id;
-
+        
+        const league_uid = leagueResult[0][0]?.id;
         const sportQuery =
-          "SELECT sports_id FROM vi_ex_master_sports WHERE sports_name = $1";
+          "SELECT sports_id FROM vi_ex_master_sports WHERE sports_name = ?";
         const sportResult = await db.query(sportQuery, [sport_name]);
-        const sport_guid = sportResult.rows[0]?.sports_id;
+        const sport_guid = sportResult[0][0]?.sports_id;
 
         const currentDate = new Date();
         const fixtureDate = new Date(start_date);
@@ -74,23 +75,23 @@ router.post("/", async (req, res) => {
             event_id, sport_guid, unique_id, time_status, r_id, league_uid, open_date, updated_at, ss,
             team_1, team_2, league_json, participants, participant_name, admin_status, agent_status,
             is_live, total_cap, agent_total_cap, is_auto_settle, chanel_id, cta_background_color,
-            cta_font_color, background_image, "order", is_notify, rz_match_id, is_widget
+            cta_font_color, background_image, \`order\`, is_notify, rz_match_id, is_widget
           ) VALUES (
-            $1, $2, DEFAULT, $3, DEFAULT, $4, $5, CURRENT_TIMESTAMP, DEFAULT,
-            $6, $7, $8::jsonb, $9::jsonb, $10, TRUE, TRUE, $11, DEFAULT, DEFAULT, TRUE,
+            ?, ?, DEFAULT, ?, DEFAULT, ?, ?, CURRENT_TIMESTAMP, DEFAULT,
+            ?, ?, ?, ?, ?, TRUE, TRUE, ?, DEFAULT, DEFAULT, TRUE,
             DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT
-          ) ON CONFLICT (event_id) DO UPDATE SET
-            sport_guid = EXCLUDED.sport_guid,
-            time_status = EXCLUDED.time_status,
-            league_uid = EXCLUDED.league_uid,
-            open_date = EXCLUDED.open_date,
+          ) ON DUPLICATE KEY UPDATE
+            sport_guid = VALUES(sport_guid),
+            time_status = VALUES(time_status),
+            league_uid = VALUES(league_uid),
+            open_date = VALUES(open_date),
             updated_at = CURRENT_TIMESTAMP,
-            team_1 = EXCLUDED.team_1,
-            team_2 = EXCLUDED.team_2,
-            league_json = EXCLUDED.league_json,
-            participants = EXCLUDED.participants,
-            participant_name = EXCLUDED.participant_name,
-            is_live = EXCLUDED.is_live
+            team_1 = VALUES(team_1),
+            team_2 = VALUES(team_2),
+            league_json = VALUES(league_json),
+            participants = VALUES(participants),
+            participant_name = VALUES(participant_name),
+            is_live = VALUES(is_live)
         `;
 
         const values = [
@@ -146,11 +147,11 @@ async function fetchAndInsertOdds(fixtureId) {
     const insertQuery = `
       INSERT INTO vi_lsport_market_odds (
         event_id, market_id, market_name, market_key, id, name
-      ) VALUES ($1, $2, $3, $4, $5, $6)
-      ON CONFLICT (id) DO UPDATE SET
-        market_name = EXCLUDED.market_name,
-        market_key = EXCLUDED.market_key,
-        name = EXCLUDED.name
+      ) VALUES (?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        market_name = VALUES(market_name),
+        market_key = VALUES(market_key),
+        name = VALUES(name)
     `;
 
     for (const odd of oddData) {

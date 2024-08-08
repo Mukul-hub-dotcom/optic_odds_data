@@ -2,13 +2,12 @@ const express = require("express");
 const db = require("../db");
 const axios = require("axios");
 const router = express.Router();
-require('dotenv').config()
+require('dotenv').config();
 
-const key=process.env.OPTIC_ODDS_KEY
+const key = process.env.OPTIC_ODDS_KEY;
 
 router.post("/", async (req, res) => {
-  const url =
-    `https://api.opticodds.com/api/v3/sports?key=${key}`;
+  const url = `https://api.opticodds.com/api/v3/sports?key=${key}`;
 
   try {
     const response = await axios.get(url);
@@ -17,17 +16,17 @@ router.post("/", async (req, res) => {
     for (const sport of sportsData) {
       const { id: sport_guid, name: sports_name } = sport;
 
-      const existingSport = await db.query(
-        "SELECT * FROM vi_ex_master_sports WHERE sports_name = $1",
+      const [existingSport] = await db.query(
+        "SELECT * FROM vi_ex_master_sports WHERE sports_name = ?",
         [sports_name]
       );
 
-      if (existingSport.rows.length === 0) {
+      if (existingSport.length === 0) {
         const query = `
-        INSERT INTO vi_ex_master_sports (
-           lsport_guid, sports_name, updated_date, 
-          provider_name 
-        ) VALUES ($1, $2, CURRENT_TIMESTAMP, $3)
+          INSERT INTO vi_ex_master_sports (
+            lsport_guid, sports_name, updated_date, 
+            provider_name 
+          ) VALUES (?, ?, CURRENT_TIMESTAMP, ?)
         `;
 
         const values = [56789, sports_name, "optic_odds"];
